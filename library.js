@@ -4,10 +4,11 @@
 // The user can toggle the status of each book between “on shelf” and “checked out”
 // The user should interact with the program using the command line interface. Your solution can be in the language of your choosing. If you have time, think about what other functionality you might add. Try to implement it for an extra challenge!
 
-import books from "./books.js";
+// import books from "./books.js";
 import chalk from "chalk";
 import readline from "readline";
 import figlet from "figlet";
+import fs from "fs";
 
 // create interface for input and output
 const rl = readline.createInterface({
@@ -24,6 +25,17 @@ console.log(chalk.magenta(figlet.textSync('Libary Inventory', {
 })));
 
 let userInput = "";
+let inventoryEmpty = false;
+let books = [];
+
+function getAllBooks() {
+	fs.readFile("books.json", "utf8", function(err, data) {
+		if (err) console.error(err.message);
+		books = JSON.parse(data.toString());
+		return books;
+	});
+}
+getAllBooks();
 
 rl.question(`\nEnter:
     \n1 to print a list of all books
@@ -31,45 +43,52 @@ rl.question(`\nEnter:
     \n3 to get details for a specific book\n`, function (string) {
     userInput = string
 
-
         if (userInput === '1') {
-            console.log(chalk.blue(`We currently have these ${books.length} books in our inventory:`), books);
-            rl.question("\nFor more book details, enter the title of the book:\n", function (string) {
-                let selectedBook;
-                userInput = string;
-                // add option to delete this book from inventory
-                // maybe: add option to filter books
-                try {
-                    selectedBook = books.filter(book => book.title === string);
-                    selectedBook = selectedBook[0];
+			if (books.length) {
+				console.log(chalk.blue(`We currently have these ${books.length} books in our inventory:`), books);
+				rl.question("\nFor more book details, enter the title of the book:\n", function (string) {
+					let selectedBook;
+					userInput = string;
+					// add option to delete this book from inventory
+					// maybe: add option to filter books
+					try {
+						selectedBook = books.filter(book => book.title === string);
+						selectedBook = selectedBook[0];
 
-                    console.log(chalk.blue(`\n${selectedBook.title} by ${selectedBook.author} is currently:\n`))
-                    console.log(chalk.bgMagenta(`${selectedBook.availability}`));
+						console.log(chalk.blue(`\n${selectedBook.title} by ${selectedBook.author} is currently:\n`))
+						console.log(chalk.bgMagenta(`${selectedBook.availability}`));
 
-                    rl.question(`Enter yes to change availability or no to cancel: `, function (string) {
-                        userInput = string.toLowerCase();
-                        if (userInput === 'no') {
-                            rl.close();
-                        }
-                        else {
-                            console.log(chalk.magenta("Your updated inventory: "), books);
-                            selectedBook['availability'] === "on shelf"
-                            ? selectedBook['availability'] = "checked out"
-                            : selectedBook['availability'] = "on shelf"
-                            console.log(chalk.blue(`${selectedBook.title} is now:\n`))
-                            console.log(chalk.bgMagenta(`${selectedBook['availability']}`));
-                            rl.close();
-                        }
-                    });
-                }
-                catch (err) {
-                    console.log(chalk.red("We do not have that book in our inventory."));
-                    rl.close();
-                }
-            });
-        }
+						rl.question(`Enter yes to change availability or no to cancel: `, function (string) {
+							userInput = string.toLowerCase();
+							if (userInput === 'no') {
+								rl.close();
+							}
+							else {
+								console.log(chalk.magenta("Your updated inventory: "), books);
+								selectedBook['availability'] === "on shelf"
+								? selectedBook['availability'] = "checked out"
+								: selectedBook['availability'] = "on shelf"
+								console.log(chalk.blue(`${selectedBook.title} is now:\n`))
+								console.log(chalk.bgMagenta(`${selectedBook['availability']}`));
+								rl.close();
+							}
+						});
+					}
+					catch (err) {
+						console.log(chalk.red("We do not have that book in our inventory."));
+						rl.close();
+					}
+				});
+			}
+			else inventoryEmpty = true;
+			if (inventoryEmpty) {
+				console.log(chalk.red("Your inventory is empty! Add a new book now."));
+			}
+		}
 
-        if (userInput === '2') {
+
+
+        if (userInput === '2' || inventoryEmpty) {
 
             let book = {};
 
@@ -85,8 +104,16 @@ rl.question(`\nEnter:
                 userInput = string.toLowerCase();
                 if (userInput === "yes") {
                     books.push(book);
+					fs.appendFile("books.json", "[]", (err) => {
+						if (err) {
+							console.error(err.message);
+							return;
+						}
+						updateInventory(books);
+					});
                     console.log(`${book.title} by ${book.author} is now available!`);
                     console.log("Here is your updated inventory: ", books);
+					inventoryEmpty = false;
                     rl.close();
                 }
                 else {
@@ -98,3 +125,20 @@ rl.question(`\nEnter:
             });
         }
 });
+
+
+function updateInventory(books) {
+	fs.writeFile("books.json", JSON.stringify(books), (err) => {
+		if (err) {
+			console.error(err.message);
+		}
+		else {
+			fs.readFile("books.json", "utf8", function(err, data) {
+				if (err) console.error(err.message);
+				books = JSON.parse(data.toString());
+			});
+			console.log("Your inventory has been updated!");
+			console.log(books);
+		}
+	})
+}
