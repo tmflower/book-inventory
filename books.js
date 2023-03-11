@@ -16,5 +16,4 @@ const books = [
     "availability": "on shelf"},
 ]
 
-// module.exports = books
 export default books;

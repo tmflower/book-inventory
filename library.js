@@ -9,6 +9,7 @@ import chalk from "chalk";
 import readline from "readline";
 import figlet from "figlet";
 import fs from "fs";
+import { v4 as uuid4 } from "uuid";
 
 // create interface for input and output
 const rl = readline.createInterface({
@@ -16,7 +17,7 @@ const rl = readline.createInterface({
   output: process.stdout,
 });
 
-console.log(chalk.magenta(figlet.textSync('Libary Inventory', {
+console.log(chalk.magenta(figlet.textSync('Library Inventory', {
     font: 'Puffy',
     horizontalLayout: 'default',
     verticalLayout: 'default',
@@ -35,22 +36,29 @@ function getAllBooks() {
 		return books;
 	});
 }
+
 getAllBooks();
 
 rl.question(`\nEnter:
-    \n1 to print a list of all books
-    \n2 to add a new book to the inventory
-    \n3 to get details for a specific book\n`, function (string) {
+    \n📝 1 to print a list of all books
+    \n📔 2 to add a new book to the inventory
+    \n❌ 3 to remove a lost or stolen book from the inventory
+	\n✅ 4 to check a book in or out
+	\n🔎 5 to search for a book by partial title\n`, function (string) {
     userInput = string
 
-        if (userInput === '1') {
+        if (userInput === '1' || userInput === '4') {
 			if (books.length) {
-				console.log(chalk.blue(`We currently have these ${books.length} books in our inventory:`), books);
-				rl.question("\nFor more book details, enter the title of the book:\n", function (string) {
+
+				if (userInput === '1') {
+					let numAgreement = "books";
+					if (books.length === 1) numAgreement = "book";
+					console.log(chalk.blue(`We currently have ${books.length} ${numAgreement} in our inventory:`), books);
+				}
+
+				rl.question("\nTo check a book in or out, enter the title of the book:\n", function (string) {
 					let selectedBook;
 					userInput = string;
-					// add option to delete this book from inventory
-					// maybe: add option to filter books
 					try {
 						selectedBook = books.filter(book => book.title === string);
 						selectedBook = selectedBook[0];
@@ -70,6 +78,7 @@ rl.question(`\nEnter:
 								: selectedBook['availability'] = "on shelf"
 								console.log(chalk.blue(`${selectedBook.title} is now:\n`))
 								console.log(chalk.bgMagenta(`${selectedBook['availability']}`));
+								updateInventory(books);
 								rl.close();
 							}
 						});
@@ -86,8 +95,6 @@ rl.question(`\nEnter:
 			}
 		}
 
-
-
         if (userInput === '2' || inventoryEmpty) {
 
             let book = {};
@@ -97,6 +104,7 @@ rl.question(`\nEnter:
 
             rl.question("Enter author of book\n", function (string) {
                 book['author'] = string;
+				book['ISBN'] = uuid4();
                 book['availability'] = "on shelf"
                 console.log(book);
 
@@ -124,6 +132,26 @@ rl.question(`\nEnter:
             });
             });
         }
+
+		if (userInput === '3') {
+			rl.question(`Enter the title of the book you want to remove\n`, function (string) {
+				let bookTitle = string;
+				try {
+					let book = books.filter(book => book.title === bookTitle);
+					rl.question(`Enter yes to remove ${book.title} or no to cancel.`, function (string) {
+						if (string === 'yes') {
+							books.splice(books.indexOf(book), 1);
+							updateInventory(books);
+						}
+						rl.close();
+					})
+				}
+				catch (err) {
+					console.log(chalk.red("We do not have that book in our inventory."));
+					rl.close();
+				}
+			})
+		}
 });
 
 
@@ -137,7 +165,7 @@ function updateInventory(books) {
 				if (err) console.error(err.message);
 				books = JSON.parse(data.toString());
 			});
-			console.log("Your inventory has been updated!");
+			console.log(chalk.magenta("📚 Your inventory has been updated! 📚"));
 			console.log(books);
 		}
 	})

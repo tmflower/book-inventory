@@ -1,0 +1,2 @@
+-Check for duplicate titles when user enters title
+-Option to add multiple books at once
