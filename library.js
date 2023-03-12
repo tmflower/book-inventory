@@ -10,6 +10,7 @@ import readline from "readline";
 import figlet from "figlet";
 import fs from "fs";
 import { v4 as uuid4 } from "uuid";
+import inquirer from "inquirer";
 
 // create interface for input and output
 const rl = readline.createInterface({
@@ -35,16 +36,16 @@ function getAllBooks() {
 		books = JSON.parse(data.toString());
 		return books;
 	});
-}
-
+};
 getAllBooks();
 
-rl.question(`\nEnter:
+rl.question(chalk.bold(`\nEnter:
     \n📝 1 to print a list of all books
     \n📔 2 to add a new book to the inventory
     \n❌ 3 to remove a lost or stolen book from the inventory
 	\n✅ 4 to check a book in or out
-	\n🔎 5 to search for a book by partial title\n`, function (string) {
+	\n🔎 5 to search for a book by partial title
+	\n`), function (string) {
     userInput = string
 
         if (userInput === '1' || userInput === '4') {
@@ -53,10 +54,10 @@ rl.question(`\nEnter:
 				if (userInput === '1') {
 					let numAgreement = "books";
 					if (books.length === 1) numAgreement = "book";
-					console.log(chalk.blue(`We currently have ${books.length} ${numAgreement} in our inventory:`), books);
+					console.log(chalk.blue(`You currently have ${books.length} ${numAgreement} in your inventory:`), books);
 				}
 
-				rl.question("\nTo check a book in or out, enter the title of the book:\n", function (string) {
+				rl.question(chalk.bold("\nTo check a book in or out, enter the title of the book:\n"), function (string) {
 					let selectedBook;
 					userInput = string;
 					try {
@@ -66,7 +67,7 @@ rl.question(`\nEnter:
 						console.log(chalk.blue(`\n${selectedBook.title} by ${selectedBook.author} is currently:\n`))
 						console.log(chalk.bgMagenta(`${selectedBook.availability}`));
 
-						rl.question(`Enter yes to change availability or no to cancel: `, function (string) {
+						rl.question(chalk.bold(`Enter yes to change availability or no to cancel: `), function (string) {
 							userInput = string.toLowerCase();
 							if (userInput === 'no') {
 								rl.close();
@@ -84,14 +85,16 @@ rl.question(`\nEnter:
 						});
 					}
 					catch (err) {
-						console.log(chalk.red("We do not have that book in our inventory."));
+						console.log(chalk.red("You do not have that book in your inventory."));
 						rl.close();
 					}
 				});
 			}
-			else inventoryEmpty = true;
-			if (inventoryEmpty) {
-				console.log(chalk.red("Your inventory is empty! Add a new book now."));
+
+			else
+				inventoryEmpty = true;
+				if (inventoryEmpty) {
+					console.log(chalk.red("Your inventory is empty! Add a new book now."));
 			}
 		}
 
@@ -99,16 +102,16 @@ rl.question(`\nEnter:
 
             let book = {};
 
-            rl.question("Enter title of book\n", function (string) {
+            rl.question(chalk.bold("Enter title of book\n"), function (string) {
                 book['title'] = string;
 
-            rl.question("Enter author of book\n", function (string) {
+            rl.question(chalk.bold("Enter author of book\n"), function (string) {
                 book['author'] = string;
 				book['ISBN'] = uuid4();
                 book['availability'] = "on shelf"
                 console.log(book);
 
-            rl.question("Enter yes to add this book or no to cancel\n", function (string) {
+            rl.question(chalk.bold("Enter yes to add this book or no to cancel\n"), function (string) {
                 userInput = string.toLowerCase();
                 if (userInput === "yes") {
                     books.push(book);
@@ -119,8 +122,8 @@ rl.question(`\nEnter:
 						}
 						updateInventory(books);
 					});
-                    console.log(`${book.title} by ${book.author} is now available!`);
-                    console.log("Here is your updated inventory: ", books);
+                    console.log(chalk.blue(`${book.title} by ${book.author} is now available!`));
+                    console.log(chalk.magenta("Here is your updated inventory: ", books));
 					inventoryEmpty = false;
                     rl.close();
                 }
@@ -134,23 +137,47 @@ rl.question(`\nEnter:
         }
 
 		if (userInput === '3') {
-			rl.question(`Enter the title of the book you want to remove\n`, function (string) {
+			rl.question(chalk.bold(`Enter the title of the book you want to remove\n`), function (string) {
 				let bookTitle = string;
+				let selectedBook = '';
 				try {
-					let book = books.filter(book => book.title === bookTitle);
-					rl.question(`Enter yes to remove ${book.title} or no to cancel.`, function (string) {
+					selectedBook = books.filter(book => book.title === bookTitle);
+					rl.question(chalk.bold(`Enter yes to remove ${selectedBook[0].title} or no to cancel\n`), function (string) {
 						if (string === 'yes') {
-							books.splice(books.indexOf(book), 1);
+							books.splice(books.indexOf(selectedBook), 1);
 							updateInventory(books);
 						}
 						rl.close();
-					})
+					});
 				}
 				catch (err) {
-					console.log(chalk.red("We do not have that book in our inventory."));
+					console.log(chalk.red("You do not have that book in your inventory."));
 					rl.close();
 				}
-			})
+			});
+		}
+
+		if (userInput === '5') {
+			rl.question(chalk.bold(`Enter any part of the book title to search\n`), function (string) {
+				let partialTitle = string;
+				try {
+					let matchingBooks = books.filter(book => book.title.toLowerCase().includes(partialTitle.toLowerCase()));
+					console.log(partialTitle);
+
+					if (!matchingBooks.length) {
+						console.log(chalk.red(`None of our books match your search.`));
+						rl.close();
+					}
+					else {
+						console.log(chalk.magenta(`These are all the books that match your search:\n`), matchingBooks);
+						rl.close();
+					}
+				}
+				catch (err) {
+					console.log(err.message);
+					rl.close();
+				}
+			});
 		}
 });
 
