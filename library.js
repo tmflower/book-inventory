@@ -4,15 +4,11 @@
 // The user can toggle the status of each book between “on shelf” and “checked out”
 // The user should interact with the program using the command line interface. Your solution can be in the language of your choosing. If you have time, think about what other functionality you might add. Try to implement it for an extra challenge!
 
-// import books from "./books.js";
 import chalk from "chalk";
 import readline from "readline";
 import figlet from "figlet";
-import fs from "fs";
-import { v4 as uuid4 } from "uuid";
-import inquirer from "inquirer";
+import { getAllBooks, getBook, addBook, updateBook, deleteBook } from "./api.js";
 
-// create interface for input and output
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
@@ -26,174 +22,183 @@ console.log(chalk.magenta(figlet.textSync('Library Inventory', {
     whitespaceBreak: true,
 })));
 
-let userInput = "";
+let userInput;
 let inventoryEmpty = false;
 let books = [];
 
-function getAllBooks() {
-	fs.readFile("books.json", "utf8", function(err, data) {
-		if (err) console.error(err.message);
-		books = JSON.parse(data.toString());
-		return books;
-	});
-};
-getAllBooks();
-
-rl.question(chalk.bold(`\nEnter:
+async function openMenu() {
+	books = await getAllBooks();
+	rl.question(chalk.bold(`\nEnter:
     \n📝 1 to print a list of all books
     \n📔 2 to add a new book to the inventory
     \n❌ 3 to remove a lost or stolen book from the inventory
 	\n✅ 4 to check a book in or out
 	\n🔎 5 to search for a book by partial title
+	\n👋 'quit' to exit program
 	\n`), function (string) {
-    userInput = string
+		let userInput = string
+		if (userInput === '1' || userInput === '4') {
+			choosePrint(userInput);
+		}
+		if (userInput === '2' || inventoryEmpty) {
+			chooseAdd();
+		}
+		if (userInput === '3') {
+			chooseRemove();
+		}
+		if (userInput === '5') {
+			chooseSearch();
+		}
+		if (userInput === 'quit') {
+			chooseQuit();
+		}
+	});
+};
 
-        if (userInput === '1' || userInput === '4') {
-			if (books.length) {
+openMenu();
 
-				if (userInput === '1') {
-					let numAgreement = "books";
-					if (books.length === 1) numAgreement = "book";
-					console.log(chalk.blue(`You currently have ${books.length} ${numAgreement} in your inventory:`), books);
-				}
+function choosePrint(userInput) {
+	if (books.length) {
 
-				rl.question(chalk.bold("\nTo check a book in or out, enter the title of the book:\n"), function (string) {
-					let selectedBook;
-					userInput = string;
-					try {
-						selectedBook = books.filter(book => book.title === string);
-						selectedBook = selectedBook[0];
-
-						console.log(chalk.blue(`\n${selectedBook.title} by ${selectedBook.author} is currently:\n`))
-						console.log(chalk.bgMagenta(`${selectedBook.availability}`));
-
-						rl.question(chalk.bold(`Enter yes to change availability or no to cancel: `), function (string) {
-							userInput = string.toLowerCase();
-							if (userInput === 'no') {
-								rl.close();
-							}
-							else {
-								console.log(chalk.magenta("Your updated inventory: "), books);
-								selectedBook['availability'] === "on shelf"
-								? selectedBook['availability'] = "checked out"
-								: selectedBook['availability'] = "on shelf"
-								console.log(chalk.blue(`${selectedBook.title} is now:\n`))
-								console.log(chalk.bgMagenta(`${selectedBook['availability']}`));
-								updateInventory(books);
-								rl.close();
-							}
-						});
-					}
-					catch (err) {
-						console.log(chalk.red("You do not have that book in your inventory."));
-						rl.close();
-					}
-				});
-			}
-
-			else
-				inventoryEmpty = true;
-				if (inventoryEmpty) {
-					console.log(chalk.red("Your inventory is empty! Add a new book now."));
-			}
+		if (userInput === '1') {
+			let numAgreement = "books";
+			if (books.length === 1) numAgreement = "book";
+			console.log(chalk.blue(`You currently have ${books.length} ${numAgreement} in your inventory:`), books);
 		}
 
-        if (userInput === '2' || inventoryEmpty) {
-
-            let book = {};
-
-            rl.question(chalk.bold("Enter title of book\n"), function (string) {
-                book['title'] = string;
-
-            rl.question(chalk.bold("Enter author of book\n"), function (string) {
-                book['author'] = string;
-				book['ISBN'] = uuid4();
-                book['availability'] = "on shelf"
-                console.log(book);
-
-            rl.question(chalk.bold("Enter yes to add this book or no to cancel\n"), function (string) {
-                userInput = string.toLowerCase();
-                if (userInput === "yes") {
-                    books.push(book);
-					fs.appendFile("books.json", "[]", (err) => {
-						if (err) {
-							console.error(err.message);
-							return;
-						}
-						updateInventory(books);
-					});
-                    console.log(chalk.blue(`${book.title} by ${book.author} is now available!`));
-                    console.log(chalk.magenta("Here is your updated inventory: ", books));
-					inventoryEmpty = false;
-                    rl.close();
-                }
-                else {
-                    console.log(chalk.blue("Bye for now!"));
-                    rl.close();
-                }
-            });
-            });
-            });
-        }
-
-		if (userInput === '3') {
-			rl.question(chalk.bold(`Enter the title of the book you want to remove\n`), function (string) {
-				let bookTitle = string;
-				let selectedBook = '';
+		rl.question(chalk.bold("\nTo check a book in or out, enter the title of the book, or enter 'menu' to return to menu:\n"), function (string) {
+			let selectedBook;
+			userInput = string;
+			if (userInput === 'menu') openMenu();
+			else {
 				try {
-					selectedBook = books.filter(book => book.title === bookTitle);
-					rl.question(chalk.bold(`Enter yes to remove ${selectedBook[0].title} or no to cancel\n`), function (string) {
-						if (string === 'yes') {
-							books.splice(books.indexOf(selectedBook), 1);
-							updateInventory(books);
+					selectedBook = books.filter(book => book.title === string);
+					selectedBook = selectedBook[0];
+
+					console.log(chalk.blue(`\n${selectedBook.title} by ${selectedBook.author} is currently: `))
+					console.log(chalk.bgMagenta(`${selectedBook.availability}\n`));
+
+					rl.question(chalk.bold(`Enter yes to change availability or no to cancel: `), function (string) {
+						userInput = string.toLowerCase();
+						if (userInput === 'yes') {
+							selectedBook['availability'] === "on shelf"
+							? selectedBook['availability'] = "checked out"
+							: selectedBook['availability'] = "on shelf"
+
+							updateBook(selectedBook);
+
+							console.log(chalk.blue(`\n${selectedBook.title} is now:`));
+							console.log(chalk.bgMagenta(`${selectedBook['availability']}`));
 						}
-						rl.close();
+						else if (userInput === 'no') {
+							console.log(chalk.magenta(`Your request has been cancelled.`));
+						}
+						else {
+							console.log(chalk.red(`There was a problem with your response. Please try again.`));
+						}
+						openMenu();
 					});
 				}
 				catch (err) {
 					console.log(chalk.red("You do not have that book in your inventory."));
-					rl.close();
+					openMenu();
 				}
+			}
+		});
+	}
+
+	else
+		inventoryEmpty = true;
+		if (inventoryEmpty) {
+			console.log(chalk.red("Your inventory is empty! Add a new book now."));
+	}
+}
+
+
+function chooseAdd() {
+		let newBook = {};
+
+		rl.question(chalk.bold("Enter title of book\n"), function (string) {
+			newBook['title'] = string;
+
+		rl.question(chalk.bold("Enter author of book\n"), function (string) {
+			newBook['author'] = string;
+
+		rl.question(chalk.bold("Enter yes to add this book or no to cancel\n"), function (string) {
+			userInput = string.toLowerCase();
+			if (userInput === 'yes') {
+				addBook(newBook);
+				console.log(chalk.blue(`${newBook.title} by ${newBook.author} has been added to your inventory!`));
+				inventoryEmpty = false;
+			}
+			else if (userInput === 'no') {
+				console.log(chalk.magenta(`Your request has been cancelled.`));
+			}
+			else {
+				console.log(chalk.red(`There was a problem with your response. Please try again.`));
+			}
+			openMenu();
+		});
+		});
+		});
+}
+
+function chooseRemove() {
+	rl.question(chalk.bold(`Enter the title of the book you want to remove\n`), function (string) {
+		let bookTitle = string;
+		let selectedBook = '';
+		try {
+			selectedBook = books.filter(book => book.title === bookTitle);
+			rl.question(chalk.bold(`Enter yes to remove ${selectedBook[0].title} or no to cancel\n`), function (string) {
+				if (string === 'yes') {
+					deleteBook(selectedBook[0].title);
+					console.log(chalk.magenta(`${selectedBook[0].title} has been removed from your inventory.`));
+				}
+				else if (string === 'no') {
+					console.log(chalk.magenta(`Your request has been cancelled.`));
+				}
+				else {
+					console.log(chalk.red(`There was a problem with your response. Please try again.`));
+				}
+				openMenu();
 			});
 		}
-
-		if (userInput === '5') {
-			rl.question(chalk.bold(`Enter any part of the book title to search\n`), function (string) {
-				let partialTitle = string;
-				try {
-					let matchingBooks = books.filter(book => book.title.toLowerCase().includes(partialTitle.toLowerCase()));
-					console.log(partialTitle);
-
-					if (!matchingBooks.length) {
-						console.log(chalk.red(`None of our books match your search.`));
-						rl.close();
-					}
-					else {
-						console.log(chalk.magenta(`These are all the books that match your search:\n`), matchingBooks);
-						rl.close();
-					}
-				}
-				catch (err) {
-					console.log(err.message);
-					rl.close();
-				}
-			});
+		catch (err) {
+			console.log(chalk.red("You do not have that book in your inventory."));
+			openMenu();
 		}
-});
+	});
+}
 
+function chooseSearch() {
+	rl.question(chalk.bold(`Enter title to search for a book\n`), function (string) {
+		let partialTitle = string;
+		let foundBook = {};
+		try {
+			let matchingBooks = books.filter(book => book.title.toLowerCase().includes(partialTitle.toLowerCase()));
 
-function updateInventory(books) {
-	fs.writeFile("books.json", JSON.stringify(books), (err) => {
-		if (err) {
-			console.error(err.message);
+			if (!matchingBooks.length) {
+				console.log(chalk.red(`None of our books match your search.`));
+				openMenu();
+			}
+			else {
+				console.log(chalk.magenta(`These book titles match your search:\n`), matchingBooks.map(matchingBook => matchingBook.title));
+				rl.question(chalk.bold(`For book details, enter the complete title of the book you are searching for.\n`), async function (string) {
+					let bookTitle = string;
+					foundBook = await getBook(bookTitle);
+					console.log(chalk.magenta(`Here are your book details: \n`));
+					console.log(foundBook);
+					openMenu();
+				});
+			}
 		}
-		else {
-			fs.readFile("books.json", "utf8", function(err, data) {
-				if (err) console.error(err.message);
-				books = JSON.parse(data.toString());
-			});
-			console.log(chalk.magenta("📚 Your inventory has been updated! 📚"));
-			console.log(books);
+		catch (err) {
+			console.log(err.message);
+			openMenu();
 		}
-	})
+	});
+}
+
+function chooseQuit() {
+	process.exit();
 }
