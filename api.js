@@ -2,6 +2,7 @@ import db from "./db.js";
 
 let book = {};
 
+// get complete inventory list from database
 export async function getAllBooks() {
 	try {
 		let res = await db.query(`SELECT id, title, author, availability FROM inventory`);
@@ -12,6 +13,7 @@ export async function getAllBooks() {
 	}
 };
 
+// get a single book by its title from inventory
 export async function getBook(title) {
 	try {
 		let res = await db.query(`SELECT id, title, author, availability FROM inventory WHERE title = $1`, [title]);
@@ -24,6 +26,7 @@ export async function getBook(title) {
 	}
 };
 
+// add a book to inventory with title, author, availability, and serial id number
 export async function addBook(book) {
 	try {
 		let res = await db.query(`INSERT INTO inventory (title, author, availability) VALUES ($1, $2, $3) RETURNING id, title, author, availability`, [book.title, book.author, "on shelf"]);
@@ -34,6 +37,7 @@ export async function addBook(book) {
 	}
 };
 
+// change the availability status of a book in the inventory
 export async function updateBook(book) {
 	try {
 		await db.query(`UPDATE inventory SET availability = '${book.availability}' WHERE title = $1 RETURNING id, title, author, availability`, [book.title]);
@@ -43,9 +47,10 @@ export async function updateBook(book) {
 	}
 };
 
-export async function deleteBook(title) {
+// remove a book from the inventory by its id number
+export async function deleteBook(id) {
 	try {
-		await db.query(`DELETE FROM inventory WHERE title = $1`, [title]);
+		await db.query(`DELETE FROM inventory WHERE id = $1`, [id]);
 	}
 	catch (err) {
 		console.error(err.message);

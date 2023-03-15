@@ -34,7 +34,9 @@ let inventoryEmpty = false;
 let books = [];
 
 // display and process user options
-function openMenu() {
+async function openMenu() {
+	// query database to get list of all books, make available in other functions
+	books = await getAllBooks();
 	rl.question(chalk.bold(`\nEnter:
     \n📝 1 to print a list of all books
     \n📔 2 to add a new book to the inventory
@@ -72,9 +74,7 @@ function openMenu() {
 openMenu();
 
 // function to display list of all books in inventory, with option to get details for selected book
-async function choosePrint(userInput) {
-	// query database to get list of all books
-	books = await getAllBooks();
+function choosePrint(userInput) {
 	// only run this block if inventory is not empty
 	if (books.length) {
 		// display list of all books if user selected 1; otherwise, skip this block
@@ -137,22 +137,25 @@ async function choosePrint(userInput) {
 function chooseAdd() {
 		let newBook = {};
 
+		// create new book object with user input
 		rl.question(chalk.bold("Enter title of book\n"), function (response) {
 				newBook['title'] = response;
 
 		rl.question(chalk.bold("Enter author of book\n"), function (response) {;
 			newBook['author'] = response;
 
+		// check if title already exists in db and if user intends to add duplicate
 		for (let book of books) {
 			if (book.title === newBook.title) {
-				console.log(chalk.red(`Warning! You already have this title in your inventory. Adding the same title means you have multiple copies of the same title. Please confirm your choice to proceed.`));
+				console.log(chalk.red(`Warning! You already have this title in your inventory.\nAdding the same title means you have multiple copies of the same title.\nPlease confirm your choice to proceed.`));
 			}
 		}
 
+		// if user input valid and response is yes, add book to db; otherwise, provide feedback and redirect to menu
 		rl.question(chalk.bold("Enter yes to add this book or no to cancel\n"), function (response) {
 			if (response.toLowerCase() === 'yes' && newBook.title.length && newBook.author.length) {
 				addBook(newBook);
-				console.log(chalk.blue(`${newBook.title} by ${newBook.author} has been added to your inventory!`));
+				console.log(chalk.green(`${newBook.title} by ${newBook.author} has been added to your inventory!`));
 				inventoryEmpty = false;
 			}
 			else if (!newBook.title.length) console.log(chalk.red(`Title is required to add a book. Please try again.`));
@@ -165,39 +168,46 @@ function chooseAdd() {
 		});
 }
 
+// function to remove a book from inventory
 function chooseRemove() {
-	rl.question(chalk.bold(`Enter the title of the book you want to remove\n`), function (response) {
+	rl.question(chalk.bold(`Enter the id number of the book you want to remove\n`), function (response) {
+		// handle empty user input
 		if (!response.length) {
-			console.log(chalk.red(`Title is required to remove a book. Please try again.`));
+			console.log(chalk.red(`Id number is required to remove a book. Please try again.`));
 			openMenu();
 		}
 		else {
-			let bookTitle = response;
+			let id = Number(response);
 			let selectedBook = '';
+			// locate book if present in db; delete from db if user confirms yes; otherwise cancel and redirect to menu
 			try {
-				selectedBook = books.filter(book => book.title === bookTitle);
-				rl.question(chalk.bold(`Enter yes to remove ${selectedBook[0].title} or no to cancel\n`), function (response) {
+				selectedBook = books.filter(book => book.id === id);
+				rl.question(chalk.bold(`Enter yes to remove book number ${selectedBook[0].id}: (${selectedBook[0].title}) \nor no to cancel\n`), function (response) {
 					if (response === 'yes' && response.length) {
-						deleteBook(selectedBook[0].title);
-						console.log(chalk.magenta(`${selectedBook[0].title} has been removed from your inventory.`));
+						deleteBook(selectedBook[0].id);
+						console.log(chalk.green(`Book number ${selectedBook[0].id}: (${selectedBook[0].title}) has been removed from your inventory.`));
 					}
 					else if (response === 'no') console.log(chalk.green(`Your request has been cancelled.`));
 					else console.log(chalk.red(`There was a problem with your response. Please try again.`));
 					openMenu();
 				});
 			}
+			// if book not present in db, give feedback and redirect to menu
 			catch (err) {
-				console.log(chalk.red("You do not have that book in your inventory."));
+				console.log(chalk.red(`No book ${response} in your inventory.`));
 				openMenu();
 			}
 		}
 	});
 }
 
+// function to find a book by any part of title
 function chooseSearch() {
 	rl.question(chalk.bold(`Enter title to search for a book\n`), function (response) {
 		let partialTitle = response;
 		let foundBook = {};
+		// use partialTitle to find books in db with titles containing partialTitle; normalize casing for inclusive results
+		// give feedback and return to menu if no matching titles exist in db
 		try {
 			let matchingBooks = books.filter(book => book.title.toLowerCase().includes(partialTitle.toLowerCase()));
 
@@ -205,23 +215,26 @@ function chooseSearch() {
 				console.log(chalk.red(`None of our books match your search.`));
 				openMenu();
 			}
+			// display list of matching titles found; prompt user to select a title for details
 			else {
-				console.log(chalk.magenta(`These book titles match your search:\n`), matchingBooks.map(matchingBook => matchingBook.title));
+				console.log(chalk.green(`These book titles match your search:\n`), matchingBooks.map(matchingBook => matchingBook.title));
 				rl.question(chalk.bold(`For book details, enter the complete title of the book you are searching for.\n`), async function (response) {
 
+					// display book details if found; otherwise display feedback; redirect to menu
 					let bookTitle = response;
 					foundBook = await getBook(bookTitle);
 					if (!foundBook) {
 						console.log(chalk.red(`Invalid title. Please try searching again.`));
 					}
 					else {
-						console.log(chalk.magenta(`Here are your book details: \n`));
+						console.log(chalk.green(`Here are your book details: \n`));
 						console.log(foundBook);
 					}
 					openMenu();
 				});
 			}
 		}
+		// handle any uncaught errors
 		catch (err) {
 			console.log(chalk.red('There was a problem with your request. Please try again.'));
 			openMenu();
@@ -229,6 +242,7 @@ function chooseSearch() {
 	});
 }
 
+// function to close program
 function chooseQuit() {
 	process.exit();
 }
