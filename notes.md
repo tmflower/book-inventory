@@ -1,11 +1,9 @@
--Handle bad user input at main menu
--Check for duplicate titles when user enters title
+-Add tests & test db
 -Option to add multiple books at once
+-Set up reusable errors, warnings, etc.
 -Add user login; authenticate username & password
 -Add table view with 'checked out' & 'on shelf' sorted
 -Add search by author, availability, etc.
--Establish theme for color use (i.e. green=sucess, red=error)
--Add tests & test db
 
 
 

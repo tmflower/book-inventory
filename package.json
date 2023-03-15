@@ -11,9 +11,7 @@
   "dependencies": {
     "chalk": "^5.2.0",
     "figlet": "^1.5.2",
-    "inquirer": "^9.1.4",
-    "pg": "^8.10.0",
-    "uuid": "^9.0.0"
+    "pg": "^8.10.0"
   },
   "type": "module"
 }
